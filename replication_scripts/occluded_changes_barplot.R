@@ -1,8 +1,8 @@
 library(dplyr)
 library(ggplot2)
 
-
-
+fig_dir <- "../outputs/figures"
+dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
 
 occludedChanges<- allData
 occludedChanges$isNoChange <- ifelse(abs(occludedChanges$ActualChangeToCoverage)<0.0001,"Y","N")
@@ -48,9 +48,9 @@ plot <-ggplot(tab,aes(x = Project)) +
   # scale_fill_manual(values = fills) +
   localFormat
   
-ggsave(paste("../paper/figures/occludedImpact.pdf", sep = ""), width=7,units="in",device = "pdf")
-
- print(plot)
+ggsave(file.path(fig_dir, "occludedImpact.pdf"), width = 7, units = "in", device = "pdf")
+message("Saved Fig. 4 (RQ3): ", normalizePath(file.path(fig_dir, "occludedImpact.pdf"), mustWork = FALSE))
+# print(plot)  # omit in batch (large console output)
 
 # tab<-melt(tab,c("Change","PatchSize", "Project"))
 # tab <- group_by(tab,Project)%>% mutate(percent = (100*value/sum(value)), tot = sum(value))

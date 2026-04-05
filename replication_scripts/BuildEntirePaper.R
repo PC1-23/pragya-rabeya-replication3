@@ -1,8 +1,8 @@
-library(plyr)
-library(reshape2)
-library(readr)
-library(stargazer)
-library(readr)
+suppressPackageStartupMessages({
+  library(plyr)
+  library(reshape2)
+  library(readr)
+})
 library(ggplot2)
 library(plyr)
 library(reshape2)
@@ -29,24 +29,25 @@ medGreen <- "#568C54"
 darkGreen <- "#375935"
 
 
-flappingJacoco <- read_csv("flapping_jacoco.csv",col_types = cols(
+data_dir <- "../datasets/"
+flappingJacoco <- read_csv(paste0(data_dir, "flapping_jacoco.csv"), col_types = cols(
   commit = col_character(),
   file = col_character(),
   line = col_integer(),
   covered = col_integer()
 ))
-flappingCoveralls <- read_csv("flapping_coveralls.csv",col_types = cols(
+flappingCoveralls <- read_csv(paste0(data_dir, "flapping_coveralls.csv"), col_types = cols(
   commit = col_character(),
   file = col_character(),
   line = col_integer(),
   covered = col_integer()
 ))
 flappingAll <- rbind(flappingCoveralls,flappingJacoco)
-projSources <- read_csv("project_sources.csv",col_types = cols(
+projSources <- read_csv(paste0(data_dir, "project_sources.csv"), col_types = cols(
   ProjectName = col_character(),
   Source = col_character()
 ))
-coverage <- read_csv("coverage_EOL.csv",col_types = cols(
+coverage <- read_csv(paste0(data_dir, "coverage_EOL.csv"), col_types = cols(
   repo = col_character(),
   childSha = col_character(),
   parentSha = col_character(),
@@ -84,24 +85,25 @@ coverage <- read_csv("coverage_EOL.csv",col_types = cols(
   insLinesAllFiles = col_integer(),
   delLinesAllFiles = col_integer()
 ))
+coverage <- coverage[coverage$repo != "repo", ]
 # branches <- read_csv("branches_uniq.csv")
 # timestamps <- read_csv("ShaAndTime.csv")
-projectsCSV <- read_csv("../coveralls_importer/upTo1000PerLang.rand.csv", c("URL", "lang"), col_types = cols(
+projectsCSV <- read_csv(paste0(data_dir, "upTo1000PerLang.rand.csv"), c("URL", "lang"), col_types = cols(
   URL = col_character(),
   lang = col_character()
 ))
-projectsCSV_jacoco <- read_csv("projects_jacoco.csv", c("URL", "lang", "slug"),col_types = cols(
+projectsCSV_jacoco <- read_csv(paste0(data_dir, "projects_jacoco.csv"), c("URL", "lang", "slug"), col_types = cols(
   URL = col_character(),
   lang = col_character(),
   slug = col_character()
 ))
-shaOrders <- read_csv("csvShaOrder.csv",col_types = cols(
-  sha = col_character(),
-  idx = col_integer()
-)
-)
+shaOrders <- read_csv(paste0(data_dir, "shaOrders.csv"), col_types = cols(
+  project = col_character(),
+  idx = col_integer(),
+  sha = col_character()
+))
 
-coverage_jacoco <- read_csv("coverage_jacoco_EOL.csv",col_types = cols(
+coverage_jacoco <- read_csv(paste0(data_dir, "coverage_jacoco_EOL.csv"), col_types = cols(
   date = col_character(),
   repo = col_character(),
   childSha = col_character(),
@@ -142,7 +144,9 @@ coverage_jacoco <- read_csv("coverage_jacoco_EOL.csv",col_types = cols(
 ))
 #coverage_jacoco$timeStamp <- as.numeric(strptime(coverage_jacoco$date,'%Y-%m-%d %H:%M:%S'))
 projects <- cbind(projectsCSV, colsplit(projectsCSV$URL, ".com/", c("prePend", "ProjectName")))
+projects$ProjectName <- sub("^/", "", projects$ProjectName)
 projects_jacoco <- cbind(projectsCSV_jacoco, colsplit(projectsCSV_jacoco$URL, ".com/", c("prePend", "ProjectName")))
+projects_jacoco$ProjectName <- sub("^/", "", projects_jacoco$ProjectName)
 
 #timestamps <-unique(timestamps)
 
@@ -162,7 +166,8 @@ allData$childBranch <- NULL
 coverage_jacoco$childBranch <- NULL
 allData <- rbind(allData, coverage_jacoco)
 
-allData <- merge(allData, shaOrders, by.x = 'childSha', by.y = 'sha', all.x = TRUE)
+allData <- merge(allData, shaOrders, by.x = "childSha", by.y = "sha", all.x = TRUE)
+if ("project" %in% names(allData)) allData$project <- NULL
 #allData <- allData[allData$branch == 'master',]
 
 allData$ActualChangeToCoverage <- with(allData, (totalStatementsHitNow / totalStatementsNow) - (totalStatementsHitPrev / totalStatementsPrev))
@@ -188,22 +193,19 @@ projectIds$pid <- as.factor(projectIds$pid)
 projectIds$pidNumeric <- as.numeric(row.names(projectIds))
 colnames(projectIds) <- c("ProjectName","pid","pidNumeric")
 allData <- merge(allData,projectIds,by.x="ProjectName",by.y="ProjectName", all.x=TRUE)
-allData <- allData[order(allData$pid,allData$idx),]
-# print(aggregate(completeData$CoverageNow,list(completeData$lang),mean))
-# boxplot(completeData$CoverageNow~completeData$lang)
+allData <- allData[order(allData$pid, allData$idx), ]
+allData$totalPatchSize <- allData$insLinesAllFiles + allData$delLinesAllFiles
 
+message("Loaded builds: ", nrow(allData), " | Projects: ", length(unique(allData$ProjectName)))
 
 #BUILD TABLE 1:
-source('PatchSummaryTable.R', echo=TRUE)
-#BUILD FIGURE 2:
-source('coverageOfNewLines.R', echo=TRUE)
-#BUILD FIGURE 3:
-source('patchImpactOnOverallCoverage.R', echo=TRUE)
-#BUILD FIGURE 4:
-source('occluded_changes_barplot.R', echo=TRUE)
-#BUILD FIGURE 5:
-source('FlappingCovg.R', echo=TRUE)
-#BUILD FIGURE 6:
-source('DriversToCoverageChange.R', echo=TRUE)
-#Compute Corrolation between coverage of patch and rest of project
-source('corrolatePatchCovWithChange.R', echo=TRUE)
+source("PatchSummaryTable.R", echo = FALSE)
+#BUILD FIGURE 2 (RQ1):
+source("coverageOfNewLines.R", echo = FALSE)
+#BUILD FIGURE 3 (RQ2):
+source("patchImpactOnOverallCoverage.R", echo = FALSE)
+#BUILD FIGURE 4 (RQ3):
+source("occluded_changes_barplot.R", echo = FALSE)
+#Correlation: patch coverage vs change in non-patch coverage (Kendall; paper RQ2 uses Pearson — see comparison_to_paper.R)
+source("corrolatePatchCovWithChange.R", echo = FALSE)
+source("comparison_to_paper.R", echo = FALSE)

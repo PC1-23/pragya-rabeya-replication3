@@ -1,13 +1,27 @@
-library(sparkline)
 library(xtable)
-library(sparktex)
 library(dplyr)
 library(parallel)
 
+out_tables <- "../outputs/tables"
+dir.create(out_tables, showWarnings = FALSE, recursive = TRUE)
 
-coverageSparkline<- function (ipid){
-  sparktex(subset(allData,pidNumeric==ipid)$CoverageNow, cat=paste("../paper/coverage_sparklines/",ipid,".tex",sep = ""),
-           rectangle=list(c(0,1,"rgb","0.84,0.93,0.96")))
+spark_ok <- suppressWarnings(
+  requireNamespace("sparkline", quietly = TRUE) &&
+    requireNamespace("sparktex", quietly = TRUE)
+)
+if (spark_ok) {
+  library(sparkline)
+  library(sparktex)
+  dir.create("../outputs/coverage_sparklines", showWarnings = FALSE, recursive = TRUE)
+  coverageSparkline <- function(ipid) {
+    sparktex(
+      subset(allData, pidNumeric == ipid)$CoverageNow,
+      cat = paste0("../outputs/coverage_sparklines/", ipid, ".tex"),
+      rectangle = list(c(0, 1, "rgb", "0.84,0.93,0.96"))
+    )
+  }
+} else {
+  coverageSparkline <- function(ipid) invisible(NULL)
 }
 formatPercent <- function(d){
   paste("$",round(d),"\\%$",sep="")
@@ -143,7 +157,11 @@ allProjects <- merge(allProjects, avgPatchSizeAllLines, by.x = 'ProjectName', by
 allProjects <- merge(allProjects, projSources, by.x = 'ProjectName', by.y = 'ProjectName', all.x = TRUE)
 allProjects$Source <- ifelse(is.na(allProjects$Source),"\\CIO",allProjects$Source)
 
-allProjects$Coverage <- paste("\\input{coverage_sparklines/",allProjects$pidNumeric,"}", sep="")
+if (spark_ok) {
+  allProjects$Coverage <- paste0("\\input{../outputs/coverage_sparklines/", allProjects$pidNumeric, "}")
+} else {
+  allProjects$Coverage <- "--"
+}
 
 allProjects$avgPatchSizeSrc <- as.integer(allProjects$avgPatchSizeSrc)
 allProjects$avgPatchSizeTest <- as.integer(allProjects$avgPatchSizeTest)
@@ -184,8 +202,10 @@ allProjectsTable <- allProjects[,c("ProjectName","Language","Source","totalRows"
 # names(tot) <- c("ProjectName","totalRows","Language","Source","percentTest","percentSrc","percentboth","percentneither","avgPatchSizeSrc","avgPatchSizeTest","avgPatchSizeAllLines","totalStatements","Coverage")
 tot <- data.frame(t(tot))
 # allProjectsTable <- rbind(allProjectsTable,tot)
-print(xtable(allProjectsTable),only.contents=TRUE,sanitize.text.function = function(x) {x},type="latex",file="../paper/PatchSizeSummary.tex",include.colnames = FALSE,hline.after=c())
-print(xtable(tot),append=TRUE,include.rownames=FALSE,only.contents=TRUE,sanitize.text.function = function(x) {x},type="latex",file="../paper/PatchSizeSummary.tex",include.colnames = FALSE,hline.after=c())
+tex_path <- file.path(out_tables, "PatchSizeSummary.tex")
+print(xtable(allProjectsTable), only.contents = TRUE, sanitize.text.function = function(x) { x }, type = "latex", file = tex_path, include.colnames = FALSE, hline.after = c())
+print(xtable(tot), append = TRUE, include.rownames = FALSE, only.contents = TRUE, sanitize.text.function = function(x) { x }, type = "latex", file = tex_path, include.colnames = FALSE, hline.after = c())
+message("Wrote ", normalizePath(tex_path, mustWork = FALSE))
 
 
 # \textbf{TODO}~RQ2: How many patches touch only code, only tests,
@@ -206,8 +226,7 @@ print(xtable(tot),append=TRUE,include.rownames=FALSE,only.contents=TRUE,sanitize
 # patches touch only code, #patches touch only tests, # patches touch both, # patches touch none
 # size of patch in statement lines, # of files per patch
 
-mclapply(unique(allData$pidNumeric), coverageSparkline)
-# coverageSparkline(5)
+if (spark_ok) mclapply(unique(allData$pidNumeric), coverageSparkline)
 
 
 

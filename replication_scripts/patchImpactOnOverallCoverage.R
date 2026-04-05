@@ -1,7 +1,9 @@
 require(parallel)
 library(dplyr)
+library(ggplot2)
 
-dir.create("plots/patchImpact", showWarnings = FALSE, recursive = TRUE)
+fig_dir <- "../outputs/figures"
+dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
 
 fills <- c( "C- empty"="#CF5D3F",
             "C- notempty"="#A03A34",
@@ -71,10 +73,11 @@ filteredData <- allData
       localFormat + 
        coord_flip()
     # if (saveToDisk)
-      ggsave(paste("../paper/figures/patchImpact.pdf", sep = ""), width=7,units="in",device = "pdf")
+      ggsave(file.path(fig_dir, "patchImpact.pdf"), width = 7, units = "in", device = "pdf")
+      message("Saved Fig. 3 (RQ2): ", normalizePath(file.path(fig_dir, "patchImpact.pdf"), mustWork = FALSE))
     # else
-      print(stupidPlot)
-      print("Warning: THE LABELS IN PATCH IMPACT.PDF ARE PROBABLY NOT DISPLAYING CORRECTLY IN THE LEGEND, THEY NEED TO BE MANUALLY SHUFFLED (decrease with lighter red should be on bottom)")
+      # print(stupidPlot)  # omit in batch: floods console with geom text
+      message("Note: check patchImpact.pdf legend order if labels look wrong.")
   # }
 # }
 

@@ -1,7 +1,8 @@
 #IDEA: number of classes with test coveage change but no edits
 
-# make patch coverage graph
-dir.create("plots/relcovchange",showWarnings = FALSE, recursive = TRUE)
+# make patch coverage graph (Fig. 2 / RQ1)
+fig_dir <- "../outputs/figures"
+dir.create(fig_dir, showWarnings = FALSE, recursive = TRUE)
 
 allCur <- allData
 allCur$PercentageOfDiffCovered <- with(allCur,(newHitLines+newFileHitLines)/(newHitLines+newNonHitLines+newFileNonHitLines+newFileNonHitLines))
@@ -45,9 +46,8 @@ plotDataBuckets <- prop.table(plotDataBuckets,2)
 colnames(plotDataBuckets)<-paste("P",colnames(plotDataBuckets),sep="")
 # plotDataBuckets<-plotDataBuckets[,rev(colnames(plotDataBuckets))]
 
-#View(plotDataBuckets)
-#par(xpd=T, mar=par()$mar+c(-2,6.5,-4,6), las=1, cex=0.5,pin=c(5.7,5.0),family="serif")
-par(las=1,cex=0.5,pin=c(7,3.5),family="serif")
+pdf(file.path(fig_dir, "coverageofnewlines.pdf"), width = 10, height = 6)
+par(las = 1, cex = 0.5, pin = c(7, 3.5), family = "serif")
 clear <- rgb(0, 0, 1, alpha=0)
 labs <- seq(0, 1, by = 0.25)
 barplot(plotDataBuckets,axes = FALSE,
@@ -58,19 +58,19 @@ barplot(plotDataOverall, col=c(clear,"black",clear), horiz=TRUE,xlim=c(0,1), bor
 #legend(mean(range(b)), -0.5, legend.text, xjust = 0.5,
 #       fill=heat.colors(length(legend.text)))
 axis(side = 1, at = labs, labels = paste0(labs * 100, "%"), padj=-1)
-title(xlab="Percent of builds satisfying patch coverage % at level indicated by color:",mgp=c(1.5,1,0))
-#par(mar=c(5, 4, 4, 2) + 0.1)
-dev.print(pdf,"../paper/figures/coverageofnewlines.pdf")
+title(xlab = "Percent of builds satisfying patch coverage % at level indicated by color:", mgp = c(1.5, 1, 0))
+dev.off()
+message("Saved Fig. 2 (RQ1): ", normalizePath(file.path(fig_dir, "coverageofnewlines.pdf"), mustWork = FALSE))
 
-#Statistics:
-library(car)  
-clean = subset(allCur, 
-               !is.na(PercentageOfDiffCovered) &
-                 is.finite(PercentageOfDiffCovered) &
-                 !is.nan(PercentageOfDiffCovered)
+# Extra diagnostic (not the paper's RQ1 headline statistic). Name avoids clashing with corrolatePatchCovWithChange.R.
+covPearsonClean <- subset(allCur,
+  !is.na(PercentageOfDiffCovered) & is.finite(PercentageOfDiffCovered) & !is.nan(PercentageOfDiffCovered)
 )
-
-cor.test(x = clean$CoverageNow, y = clean$ActualChangeToCoverage, use="complete.obs")
+cat("\n=== Extra: Pearson (overall coverage vs delta overall coverage) — see paper RQ1 for Kendall patch vs overall ===\n")
+print(stats::cor.test(
+  x = covPearsonClean$CoverageNow, y = covPearsonClean$ActualChangeToCoverage,
+  use = "complete.obs"
+))
 
 # plot(allCur$CoverageNow, log(allCur$ActualChangeToCoverage))
 # 
